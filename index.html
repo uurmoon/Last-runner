@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#05050a" />
-<title>Last Runner v0.7 Sprite Build</title>
+<title>Last Runner v0.8 Grounded Sprite</title>
 <style>
 :root{
   --red:#ff315d;--cyan:#2bd7ff;--gold:#ffd166;--green:#63f2af;
@@ -57,7 +57,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   width:40px;height:40px;border:1px solid var(--line);border-radius:16px;background:rgba(8,12,22,.58);
   color:var(--cyan);font-size:21px;font-weight:1000;backdrop-filter:blur(16px);pointer-events:auto;
 }
-
 .status{
   position:absolute;z-index:8;left:14px;right:14px;top:calc(66px + env(safe-area-inset-top));
   max-width:330px;border-radius:20px;padding:10px 11px;
@@ -82,7 +81,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hp{background:linear-gradient(90deg,#ff315d,#ff8c3a);box-shadow:0 0 18px rgba(255,49,93,.35)}
 .xp{background:linear-gradient(90deg,#2bd7ff,#63f2af);box-shadow:0 0 18px rgba(43,215,255,.35)}
 .num{width:46px;text-align:right;color:#dce8f8;font-size:9px}
-
 .controls{
   position:absolute;z-index:9;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;
   padding:0 16px calc(17px + env(safe-area-inset-bottom));pointer-events:none;
@@ -98,7 +96,6 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .ctrl .i{font-size:27px;line-height:1}
 .ctrl.fire{width:88px;height:88px;border-color:rgba(255,49,93,.35);box-shadow:0 24px 70px rgba(255,49,93,.14),0 24px 64px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.15)}
 .ctrl:active{transform:scale(.95);filter:brightness(1.16)}
-
 .overlay{
   position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:22px;
   background:
@@ -148,7 +145,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   <div class="fxNoise"></div><div class="fxVignette"></div>
 
   <div class="hud">
-    <div class="brand"><b>LAST<br><span>RUNNER</span></b><small>Sprite v0.7</small></div>
+    <div class="brand"><b>LAST<br><span>RUNNER</span></b><small>Grounded v0.8</small></div>
     <div class="stats">
       <div class="pill"><small>Skor</small><b id="score">0</b></div>
       <div class="pill"><small>Jeton</small><b id="coin">0</b></div>
@@ -160,7 +157,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   <div class="status">
     <div class="id">
       <div class="face"></div>
-      <div class="idText"><b>Ryder</b><small>Sprite build / sidearm</small></div>
+      <div class="idText"><b>Ryder</b><small>Grounded sprite / sidearm</small></div>
     </div>
     <div class="barLine"><label>Can</label><div class="track"><div class="fill hp" id="hpF"></div></div><div class="num" id="hpT">100</div></div>
     <div class="barLine"><label>Güç</label><div class="track"><div class="fill xp" id="xpF"></div></div><div class="num" id="xpT">0%</div></div>
@@ -177,8 +174,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <div class="modal">
       <div class="hero">
         <div class="name">LAST <span>RUNNER</span></div>
-        <div class="tag">v0.7 — Ryder gerçek sprite</div>
-        <div class="desc">Bu sürümde kodla çizilen karakter kaldırıldı. Ryder artık ayrı sprite sheet görselinden kare kare oynatılıyor. Nihayet çocuk mahalleden kurtuldu.</div>
+        <div class="tag">v0.8 — Grounded Sprite Fix</div>
+        <div class="desc">Ryder artık zemine sabitlendi. Sprite kareleri tek tek kırpıldı; süzülme ve sürekli titreme azaltıldı. Yürüme animasyonu daha sakin ve okunur hale getirildi.</div>
       </div>
       <div class="actions">
         <button class="primary" id="start">Oyuna Başla</button>
@@ -228,20 +225,40 @@ const ui={score:$("score"),coin:$("coin"),wave:$("wave"),hpF:$("hpF"),hpT:$("hpT
 let W=0,H=0,DPR=1,ground=0,last=0,running=false,paused=false,gameOver=false;
 let cam=0,score=0,coin=0,wave=1,xp=0,spawn=.8,obsSpawn=2,shootCD=0,dashCD=0,shake=0;
 let bullets=[],enemyBullets=[],enemies=[],obs=[],particles=[],buildings=[],sparks=[];
-const p={x:95,y:0,w:88,h:112,vy:0,hp:100,max:100,on:true,inv:0,fire:.22,double:false,dash:0,phase:0};
+const p={x:92,y:0,w:80,h:112,vy:0,hp:100,max:100,on:true,inv:0,fire:.22,double:false,dash:0,phase:0, runTimer:0};
 
 const sheet = new Image();
 sheet.src = "ryder-spritesheet.png";
 let sheetReady = false;
 sheet.onload = () => { sheetReady = true; };
 
+// Tight sprite boxes detected from the transparent sheet.
+// Order matters: run uses top row frames 3-6.
 const F = {
-  idle:[[52,70,188,283],[274,70,177,283]],
-  run:[[514,93,222,259],[756,98,213,254],[989,103,222,249],[1243,124,188,228]],
-  jump:[[75,398,223,266]],
-  jumpShoot:[[434,392,236,261]],
-  shoot:[[788,404,294,265],[1120,403,299,266]],
-  hurt:[[63,695,255,258],[376,699,314,264]]
+  idle:[
+    {x:64,y:82,w:164,h:259,ax:.45,scale:1.00},
+    {x:286,y:82,w:153,h:259,ax:.45,scale:1.00}
+  ],
+  run:[
+    {x:526,y:105,w:198,h:235,ax:.43,scale:1.00},
+    {x:768,y:110,w:189,h:230,ax:.43,scale:1.00},
+    {x:1001,y:115,w:198,h:225,ax:.43,scale:1.00},
+    {x:1255,y:136,w:164,h:204,ax:.43,scale:1.04}
+  ],
+  jump:[
+    {x:87,y:410,w:199,h:242,ax:.43,scale:.98}
+  ],
+  jumpShoot:[
+    {x:446,y:404,w:212,h:237,ax:.43,scale:.98}
+  ],
+  shoot:[
+    {x:800,y:416,w:270,h:241,ax:.42,scale:1.00},
+    {x:1132,y:415,w:275,h:242,ax:.42,scale:1.00}
+  ],
+  hurt:[
+    {x:75,y:707,w:231,h:234,ax:.48,scale:1.00},
+    {x:388,y:714,w:290,h:237,ax:.48,scale:1.00}
+  ]
 };
 
 function resize(){
@@ -251,9 +268,9 @@ function resize(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.imageSmoothingEnabled=true;
   ground=H*.72;
-  const targetH = Math.min(124, Math.max(104, H*.135));
+  const targetH = Math.min(122, Math.max(104, H*.133));
   p.h = targetH;
-  p.w = targetH*.72;
+  p.w = targetH*.62;
   p.y=ground-p.h;
   makeScene();
 }
@@ -266,8 +283,8 @@ function makeScene(){
 function reset(){
   running=true;paused=false;gameOver=false;cam=0;score=0;coin=0;wave=1;xp=0;spawn=.65;obsSpawn=2;shootCD=0;dashCD=0;shake=0;
   bullets=[];enemyBullets=[];enemies=[];obs=[];particles=[];
-  const targetH = Math.min(124, Math.max(104, H*.135));
-  Object.assign(p,{x:92,y:ground-targetH,w:targetH*.72,h:targetH,vy:0,hp:100,max:100,on:true,inv:0,fire:.22,double:false,dash:0,phase:0});
+  const targetH = Math.min(122, Math.max(104, H*.133));
+  Object.assign(p,{x:92,y:ground-targetH,w:targetH*.62,h:targetH,vy:0,hp:100,max:100,on:true,inv:0,fire:.22,double:false,dash:0,phase:0,runTimer:0});
   ui.over.classList.add("hidden");ui.upgrade.classList.add("hidden");ui.pause.textContent="Ⅱ";updateUI();
 }
 function updateUI(){
@@ -281,24 +298,26 @@ function end(){running=false;gameOver=true;ui.final.textContent=`Skor: ${Math.fl
 function levelUp(){running=false;paused=true;ui.upgrade.classList.remove("hidden");toast("Seviye atlandı")}
 function choose(t){if(t==="rapid")p.fire=Math.max(.08,p.fire-.055);if(t==="double")p.double=true;if(t==="hp"){p.max+=25;p.hp=Math.min(p.max,p.hp+55)}xp=0;paused=false;running=true;ui.upgrade.classList.add("hidden");updateUI()}
 function jump(){if(!running||paused)return;if(p.on){p.vy=-680;p.on=false;burst(p.x+34,p.y+p.h,"#2bd7ff",12)}}
-function dash(){if(!running||paused||dashCD>0)return;p.dash=.18;dashCD=1.18;p.inv=Math.max(p.inv,.28);burst(p.x+4,p.y+60,"#63f2af",24)}
-function fire(){if(!running||paused||shootCD>0)return;shootCD=p.fire;let y=p.y+p.h*.43;bullets.push({x:p.x+p.w+22,y,vx:920,r:4,life:1.18});if(p.double)bullets.push({x:p.x+p.w+22,y:y+12,vx:920,r:4,life:1.18});burst(p.x+p.w+26,y,"#ffd166",8)}
+function dash(){if(!running||paused||dashCD>0)return;p.dash=.18;dashCD=1.18;p.inv=Math.max(p.inv,.22);burst(p.x+4,p.y+60,"#63f2af",24)}
+function fire(){if(!running||paused||shootCD>0)return;shootCD=p.fire;let y=p.y+p.h*.43;bullets.push({x:p.x+p.w+28,y,vx:920,r:4,life:1.18});if(p.double)bullets.push({x:p.x+p.w+28,y:y+12,vx:920,r:4,life:1.18});burst(p.x+p.w+30,y,"#ffd166",8)}
 function spawnEnemy(){
   const heavy=Math.random()<Math.min(.34,.08+wave*.035);
   enemies.push({x:W+85,y:ground-(heavy?82:68),w:heavy?50:39,h:heavy?82:68,hp:heavy?3+Math.floor(wave/3):1+Math.floor(wave/5),max:heavy?3+Math.floor(wave/3):1+Math.floor(wave/5),vx:-(186+wave*13+Math.random()*48),heavy,hit:0,phase:Math.random()*6,shoot:1.2+Math.random()*1.6});
 }
 function spawnObstacle(){obs.push({x:W+90,y:ground-42,w:46,h:42,vx:-(242+wave*9),dead:false})}
 function burst(x,y,c,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*260,vy:(Math.random()-.72)*260,life:.34+Math.random()*.28,c,s:2+Math.random()*3.2})}
-function hitboxPlayer(){return{x:p.x+22,y:p.y+13,w:p.w-35,h:p.h-19}}
+function hitboxPlayer(){return{x:p.x+18,y:p.y+10,w:p.w-24,h:p.h-14}}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
-function damage(v){if(p.inv>0)return;p.hp-=v;p.inv=.7;shake=.18;burst(p.x+p.w/2,p.y+p.h/2,"#ff315d",28);if(p.hp<=0)end()}
+function damage(v){if(p.inv>0)return;p.hp-=v;p.inv=.45;shake=.08;burst(p.x+p.w/2,p.y+p.h/2,"#ff315d",28);if(p.hp<=0)end()}
 
 function update(dt){
   if(!running||paused)return;
   const boost=p.dash>0?1.95:1;
   cam+=303*boost*dt;score+=(25+wave*2.2)*boost*dt;wave=1+Math.floor(score/650);
   shootCD=Math.max(0,shootCD-dt);dashCD=Math.max(0,dashCD-dt);p.inv=Math.max(0,p.inv-dt);p.dash=Math.max(0,p.dash-dt);shake=Math.max(0,shake-dt);
-  p.phase+=dt*10*boost;
+  // Separate animation timer: slower and stable, no micro jitter.
+  p.phase+=dt*(p.on?7.2:4.2)*boost;
+  p.runTimer+=dt*7.2*boost;
   p.vy+=1680*dt;p.y+=p.vy*dt;if(p.y+p.h>=ground){p.y=ground-p.h;p.vy=0;p.on=true}
   spawn-=dt;if(spawn<=0){spawnEnemy();spawn=Math.max(.5,1.08-wave*.034)+Math.random()*.68}
   obsSpawn-=dt;if(obsSpawn<=0){spawnObstacle();obsSpawn=2.15+Math.random()*1.4-Math.min(.66,wave*.025)}
@@ -368,25 +387,36 @@ function glowRect(x,y,w,h,c){
   ctx.fillStyle=c;ctx.shadowColor=c;ctx.shadowBlur=10;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));ctx.shadowBlur=0;
 }
 function pickFrame(){
-  if(p.inv>0) return F.hurt[Math.floor(p.phase*5)%F.hurt.length];
+  if(p.inv>0) return F.hurt[Math.floor(p.phase*4)%F.hurt.length];
   if(!p.on && shootCD>.09) return F.jumpShoot[0];
   if(!p.on) return F.jump[0];
-  if(shootCD>.09) return F.shoot[Math.floor(p.phase*6)%F.shoot.length];
-  return F.run[Math.floor(p.phase*8)%F.run.length];
+  if(shootCD>.09) return F.shoot[Math.floor(p.phase*5)%F.shoot.length];
+  // Use a looping run cycle even if player is standing; this is a runner game.
+  return F.run[Math.floor(p.runTimer)%F.run.length];
 }
 function drawPlayer(){
   const frame = pickFrame();
   ctx.save();
-  if(p.inv>0&&Math.floor(p.inv*20)%2===0)ctx.globalAlpha=.6;
-  const bob = p.on ? Math.sin(p.phase)*1.5 : 0;
-  const [sx,sy,sw,sh]=frame;
-  const dh = p.h;
-  const dw = sw/sh*dh;
-  const dx = p.x - dw*.18;
-  const dy = p.y + bob;
+  if(p.inv>0&&Math.floor(p.inv*14)%2===0)ctx.globalAlpha=.72;
+
+  const [sx,sy,sw,sh]=[frame.x,frame.y,frame.w,frame.h];
+  const targetH = p.h * (frame.scale || 1);
+  const scale = targetH / sh;
+  const dw = sw * scale;
+  const dh = sh * scale;
+
+  // Stable anchor: all frames share same logical foot point.
+  const footX = p.x + p.w*.48;
+  const footY = ground + 1;
+  const dx = footX - dw*(frame.ax ?? .43);
+  const dy = footY - dh;
+
+  // Shadow locked to floor, not to sprite bbox.
   ctx.fillStyle="rgba(0,0,0,.48)";
-  ctx.beginPath();ctx.ellipse(p.x+p.w*.45, ground+4, 38, 8, 0, 0, Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(footX, ground+5, 38, 8, 0, 0, Math.PI*2);ctx.fill();
+
   if(p.dash>0){ctx.strokeStyle="rgba(99,242,175,.52)";ctx.lineWidth=9;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(p.x-42,p.y+p.h*.55);ctx.lineTo(p.x+24,p.y+p.h*.57);ctx.stroke()}
+
   if(sheetReady){
     ctx.drawImage(sheet,sx,sy,sw,sh,dx,dy,dw,dh);
   }else{
@@ -437,7 +467,7 @@ function drawBullets(){
 function drawParticles(){for(const q of particles){ctx.save();ctx.globalAlpha=Math.max(0,q.life*2.4);ctx.fillStyle=q.c;ctx.fillRect(q.x,q.y,q.s,q.s);ctx.restore()}}
 function draw(){
   ctx.save();
-  if(shake>0){ctx.translate((Math.random()-.5)*8*shake*8,(Math.random()-.5)*8*shake*8)}
+  if(shake>0){ctx.translate((Math.random()-.5)*3*shake*8,(Math.random()-.5)*3*shake*8)}
   background();drawBullets();obs.forEach(drawObstacle);enemies.forEach(drawEnemy);drawPlayer();drawParticles();
   ctx.restore();
 }
