@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#05050a" />
-<title>Last Runner v0.8 Grounded Sprite</title>
+<title>Last Runner v0.9 Jump Fix</title>
 <style>
 :root{
   --red:#ff315d;--cyan:#2bd7ff;--gold:#ffd166;--green:#63f2af;
@@ -145,7 +145,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   <div class="fxNoise"></div><div class="fxVignette"></div>
 
   <div class="hud">
-    <div class="brand"><b>LAST<br><span>RUNNER</span></b><small>Grounded v0.8</small></div>
+    <div class="brand"><b>LAST<br><span>RUNNER</span></b><small>Jump Fix v0.9</small></div>
     <div class="stats">
       <div class="pill"><small>Skor</small><b id="score">0</b></div>
       <div class="pill"><small>Jeton</small><b id="coin">0</b></div>
@@ -174,8 +174,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <div class="modal">
       <div class="hero">
         <div class="name">LAST <span>RUNNER</span></div>
-        <div class="tag">v0.8 — Grounded Sprite Fix</div>
-        <div class="desc">Ryder artık zemine sabitlendi. Sprite kareleri tek tek kırpıldı; süzülme ve sürekli titreme azaltıldı. Yürüme animasyonu daha sakin ve okunur hale getirildi.</div>
+        <div class="tag">v0.9 — Jump Animation Fix</div>
+        <div class="desc">Ryder artık zemine çivilenmedi. Zıplama fiziği sprite çizimine bağlandı; havaya çıkınca karakter de gerçekten havaya kalkıyor.</div>
       </div>
       <div class="actions">
         <button class="primary" id="start">Oyuna Başla</button>
@@ -297,7 +297,7 @@ function start(){ui.menu.classList.add("hidden");reset()}
 function end(){running=false;gameOver=true;ui.final.textContent=`Skor: ${Math.floor(score)} • Jeton: ${coin} • Dalga: ${wave}`;ui.over.classList.remove("hidden")}
 function levelUp(){running=false;paused=true;ui.upgrade.classList.remove("hidden");toast("Seviye atlandı")}
 function choose(t){if(t==="rapid")p.fire=Math.max(.08,p.fire-.055);if(t==="double")p.double=true;if(t==="hp"){p.max+=25;p.hp=Math.min(p.max,p.hp+55)}xp=0;paused=false;running=true;ui.upgrade.classList.add("hidden");updateUI()}
-function jump(){if(!running||paused)return;if(p.on){p.vy=-680;p.on=false;burst(p.x+34,p.y+p.h,"#2bd7ff",12)}}
+function jump(){if(!running||paused)return;if(p.on){p.vy=-720;p.on=false;burst(p.x+34,p.y+p.h,"#2bd7ff",12)}}
 function dash(){if(!running||paused||dashCD>0)return;p.dash=.18;dashCD=1.18;p.inv=Math.max(p.inv,.22);burst(p.x+4,p.y+60,"#63f2af",24)}
 function fire(){if(!running||paused||shootCD>0)return;shootCD=p.fire;let y=p.y+p.h*.43;bullets.push({x:p.x+p.w+28,y,vx:920,r:4,life:1.18});if(p.double)bullets.push({x:p.x+p.w+28,y:y+12,vx:920,r:4,life:1.18});burst(p.x+p.w+30,y,"#ffd166",8)}
 function spawnEnemy(){
@@ -318,7 +318,7 @@ function update(dt){
   // Separate animation timer: slower and stable, no micro jitter.
   p.phase+=dt*(p.on?7.2:4.2)*boost;
   p.runTimer+=dt*7.2*boost;
-  p.vy+=1680*dt;p.y+=p.vy*dt;if(p.y+p.h>=ground){p.y=ground-p.h;p.vy=0;p.on=true}
+  p.vy+=1550*dt;p.y+=p.vy*dt;if(p.y+p.h>=ground){p.y=ground-p.h;p.vy=0;p.on=true}
   spawn-=dt;if(spawn<=0){spawnEnemy();spawn=Math.max(.5,1.08-wave*.034)+Math.random()*.68}
   obsSpawn-=dt;if(obsSpawn<=0){spawnObstacle();obsSpawn=2.15+Math.random()*1.4-Math.min(.66,wave*.025)}
   bullets.forEach(b=>{b.x+=b.vx*dt;b.life-=dt});bullets=bullets.filter(b=>b.life>0&&b.x<W+90);
@@ -405,15 +405,18 @@ function drawPlayer(){
   const dw = sw * scale;
   const dh = sh * scale;
 
-  // Stable anchor: all frames share same logical foot point.
+  // Stable anchor: all frames share one logical foot point.
+  // v0.9 fix: footY follows the physics body, so jump frames actually leave the ground.
   const footX = p.x + p.w*.48;
-  const footY = ground + 1;
+  const footY = p.y + p.h + 1;
   const dx = footX - dw*(frame.ax ?? .43);
   const dy = footY - dh;
 
-  // Shadow locked to floor, not to sprite bbox.
+  // Shadow stays on the floor and shrinks while Ryder is in the air.
+  const air = Math.max(0, ground - (p.y + p.h));
+  const shadowScale = Math.max(.42, 1 - air / 240);
   ctx.fillStyle="rgba(0,0,0,.48)";
-  ctx.beginPath();ctx.ellipse(footX, ground+5, 38, 8, 0, 0, Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(footX, ground+5, 38*shadowScale, 8*shadowScale, 0, 0, Math.PI*2);ctx.fill();
 
   if(p.dash>0){ctx.strokeStyle="rgba(99,242,175,.52)";ctx.lineWidth=9;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(p.x-42,p.y+p.h*.55);ctx.lineTo(p.x+24,p.y+p.h*.57);ctx.stroke()}
 
