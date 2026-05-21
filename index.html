@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#05050a" />
-<title>Last Runner v0.9 Jump Fix</title>
+<title>Last Runner v1.0 Background Pack</title>
 <style>
 :root{
   --red:#ff315d;--cyan:#2bd7ff;--gold:#ffd166;--green:#63f2af;
@@ -145,7 +145,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
   <div class="fxNoise"></div><div class="fxVignette"></div>
 
   <div class="hud">
-    <div class="brand"><b>LAST<br><span>RUNNER</span></b><small>Jump Fix v0.9</small></div>
+    <div class="brand"><b>LAST<br><span>RUNNER</span></b><small>Background Pack v1.0</small></div>
     <div class="stats">
       <div class="pill"><small>Skor</small><b id="score">0</b></div>
       <div class="pill"><small>Jeton</small><b id="coin">0</b></div>
@@ -174,8 +174,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     <div class="modal">
       <div class="hero">
         <div class="name">LAST <span>RUNNER</span></div>
-        <div class="tag">v0.9 — Jump Animation Fix</div>
-        <div class="desc">Ryder artık zemine çivilenmedi. Zıplama fiziği sprite çizimine bağlandı; havaya çıkınca karakter de gerçekten havaya kalkıyor.</div>
+        <div class="tag">v1.0 — Background Pack</div>
+        <div class="desc">Arka plan katmanları oyuna eklendi. Kale ufku, gotik kemerler, taş zemin ve yarasa atmosferiyle sahne artık gerçek asset’lerle çalışıyor.</div>
       </div>
       <div class="actions">
         <button class="primary" id="start">Oyuna Başla</button>
@@ -231,6 +231,15 @@ const sheet = new Image();
 sheet.src = "ryder-spritesheet.png";
 let sheetReady = false;
 sheet.onload = () => { sheetReady = true; };
+
+const bgHorizon = new Image();
+bgHorizon.src = "bg-horizon.png";
+const bgBats = new Image();
+bgBats.src = "bg-bats.png";
+const bgArches = new Image();
+bgArches.src = "bg-arches-overlay.png";
+const bgFloor = new Image();
+bgFloor.src = "bg-floor.png";
 
 // Tight sprite boxes detected from the transparent sheet.
 // Order matters: run uses top row frames 3-6.
@@ -350,38 +359,99 @@ function update(dt){
   updateUI();
 }
 
-function background(){
-  const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,"#07152a");grad.addColorStop(.58,"#070d18");grad.addColorStop(1,"#020309");ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-  const g=ctx.createRadialGradient(W*.62,H*.25,0,W*.62,H*.25,H*.45);g.addColorStop(0,"rgba(43,215,255,.24)");g.addColorStop(.45,"rgba(43,215,255,.08)");g.addColorStop(1,"rgba(43,215,255,0)");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  ctx.save();ctx.strokeStyle="rgba(255,255,255,.025)";ctx.lineWidth=1;
-  for(let x=-(cam*.06%56);x<W;x+=56){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
-  for(let y=0;y<H;y+=56){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+function drawCoverImage(img,x,y,w,h,offsetX=0,alpha=1){
+  if(!img.complete || !img.naturalWidth) return;
+  const scale=Math.max(w/img.naturalWidth,h/img.naturalHeight);
+  const dw=img.naturalWidth*scale;
+  const dh=img.naturalHeight*scale;
+  const dx=x+(w-dw)/2+offsetX;
+  const dy=y+(h-dh)/2;
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.drawImage(img,dx,dy,dw,dh);
   ctx.restore();
-  for(const s of sparks){ctx.fillStyle=`rgba(190,225,255,${s.a})`;ctx.fillRect((s.x-cam*.03)%W,s.y,s.s,s.s)}
-  const total=buildings.length*70;
-  for(const b of buildings){
-    const par=b.layer===1?.16:.34;let x=(b.x-cam*par)%total;if(x<-150)x+=total;
-    const y=ground-b.h-(b.layer===1?88:22);
-    ctx.fillStyle=b.layer===1?"rgba(3,6,12,.64)":"rgba(3,6,12,.92)";
-    ctx.fillRect(x,y,b.w,b.h);
-    ctx.strokeStyle=b.layer===1?"rgba(43,215,255,.12)":"rgba(43,215,255,.22)";
-    ctx.beginPath();ctx.moveTo(x+b.w*.55,y);ctx.lineTo(x+b.w*.55,y-18-b.seed%28);ctx.stroke();
-    const cols=Math.floor(b.w/18),rows=Math.floor(b.h/31);
-    for(let i=0;i<cols;i++)for(let j=0;j<rows;j++)if(((i*7+j*11+Math.floor(b.seed))%10)===0){
-      ctx.fillStyle=((i+j)%2)?"rgba(43,215,255,.23)":"rgba(255,49,93,.22)";
-      ctx.fillRect(x+10+i*18,y+18+j*31,4,13);
-    }
+}
+function drawRepeatX(img,y,h,speed=0,alpha=1){
+  if(!img.complete || !img.naturalWidth) return;
+  const scale=h/img.naturalHeight;
+  const dw=img.naturalWidth*scale;
+  let ox=-(cam*speed%dw);
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  for(let i=-1;i<3;i++) ctx.drawImage(img,ox+i*dw,y,dw,h);
+  ctx.restore();
+}
+function background(){
+  // Base mood
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,"#1d0f27");
+  grad.addColorStop(.45,"#140b1f");
+  grad.addColorStop(1,"#06040a");
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,W,H);
+
+  // Soft haze and vignette
+  const haze=ctx.createRadialGradient(W*.55,H*.18,0,W*.55,H*.18,H*.5);
+  haze.addColorStop(0,"rgba(255,160,110,.18)");
+  haze.addColorStop(.45,"rgba(205,88,130,.10)");
+  haze.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=haze;
+  ctx.fillRect(0,0,W,H);
+
+  // Distant horizon
+  drawRepeatX(bgHorizon, H*.10, Math.max(120,H*.19), .05, .95);
+
+  // Subtle moving particles
+  for(const s of sparks){
+    ctx.fillStyle=`rgba(255,205,205,${s.a*.7})`;
+    ctx.fillRect((s.x-cam*.02)%W,s.y,s.s,s.s);
   }
-  ctx.fillStyle="rgba(43,215,255,.035)";
-  for(let i=0;i<4;i++){let x=((i*270-cam*.25)%(W+340))-180;ctx.fillRect(x,ground-160+i*28,230,2)}
-  ctx.fillStyle="rgba(255,49,93,.08)";ctx.fillRect(0,ground-2,W,2);
-  ctx.fillStyle="#05080d";ctx.fillRect(0,ground,W,H-ground);
-  ctx.fillStyle="#101925";ctx.fillRect(0,ground,W,10);
-  ctx.fillStyle="rgba(43,215,255,.18)";ctx.fillRect(0,ground+10,W,1);
-  ctx.fillStyle="rgba(255,49,93,.34)";
-  for(let x=-(cam*1.12%180);x<W;x+=180)ctx.fillRect(x,ground+4,62,4);
-  ctx.strokeStyle="rgba(43,215,255,.16)";
-  for(let x=-(cam*.82%115);x<W;x+=115){ctx.beginPath();ctx.moveTo(x,ground+10);ctx.lineTo(x+55,H);ctx.stroke()}
+
+  // Ground texture / stage floor
+  drawCoverImage(bgFloor, 0, ground-35, W, H-ground+140, 0, 1);
+
+  // Decorative arches and room framing
+  const archesH = Math.max(330, ground-30);
+  const archesW = archesH * (bgArches.naturalWidth ? bgArches.naturalWidth / bgArches.naturalHeight : 2.2);
+  const archesX = W/2 - archesW/2 - (cam*.012 % 30);
+  const archesY = Math.max(18, ground - archesH + 8);
+  if(bgArches.complete && bgArches.naturalWidth){
+    ctx.drawImage(bgArches, archesX, archesY, archesW, archesH);
+  }
+
+  // Thin top darkness to make HUD readable
+  const hudShade=ctx.createLinearGradient(0,0,0,160);
+  hudShade.addColorStop(0,"rgba(3,3,8,.45)");
+  hudShade.addColorStop(1,"rgba(3,3,8,0)");
+  ctx.fillStyle=hudShade;
+  ctx.fillRect(0,0,W,160);
+
+  // Bats atmosphere
+  if(bgBats.complete && bgBats.naturalWidth){
+    const baseY = H*.16 + Math.sin(last/900)*5;
+    const h1 = Math.max(110,H*.16);
+    const w1 = bgBats.naturalWidth*(h1/bgBats.naturalHeight);
+    ctx.save();
+    ctx.globalAlpha=.42;
+    ctx.drawImage(bgBats, W*.52 - w1/2 - (cam*.04 % 80), baseY, w1, h1);
+    ctx.globalAlpha=.24;
+    const h2 = h1*.72;
+    const w2 = bgBats.naturalWidth*(h2/bgBats.naturalHeight);
+    ctx.drawImage(bgBats, W*.10 - (cam*.03 % 50), baseY+58, w2, h2);
+    ctx.drawImage(bgBats, W*.72 + (cam*.02 % 40), baseY+28, w2*.9, h2*.9);
+    ctx.restore();
+  }
+
+  // Floor contact line
+  ctx.fillStyle="rgba(255,114,140,.18)";
+  ctx.fillRect(0,ground-1,W,2);
+
+  // Dark lower vignette
+  const lower=ctx.createLinearGradient(0,ground-20,0,H);
+  lower.addColorStop(0,"rgba(0,0,0,0)");
+  lower.addColorStop(1,"rgba(0,0,0,.26)");
+  ctx.fillStyle=lower;
+  ctx.fillRect(0,ground-20,W,H-ground+20);
 }
 function glowRect(x,y,w,h,c){
   ctx.fillStyle=c;ctx.shadowColor=c;ctx.shadowBlur=10;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));ctx.shadowBlur=0;
